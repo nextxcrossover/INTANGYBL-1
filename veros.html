@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title id="pageTitle">Learning Path Personalization</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,300&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Bebas+Neue&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    TOKENS
@@ -51,7 +52,101 @@
   --it-accent-d: rgba(25,113,194,0.08);
 }
 
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   STAGE DASHBOARD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#stage-dashboard {
+  background: var(--ink);
+  flex-direction: column;
+  min-height: 100vh;
+}
+.dash-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 2rem; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--ink); z-index: 100;
+}
+.dash-topbar-left { display: flex; align-items: center; gap: 0.75rem; }
+.dash-topbar-title { font-family: var(--mono); font-size: 0.6rem; color: var(--amber); letter-spacing: 0.12em; text-transform: uppercase; }
+.dash-topbar-sep { width: 1px; height: 14px; background: var(--border2); }
+.dash-topbar-user { font-family: var(--mono); font-size: 0.55rem; color: var(--muted); letter-spacing: 0.06em; }
+.dash-run-btn {
+  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em;
+  text-transform: uppercase; background: var(--amber); color: var(--ink);
+  border: none; border-radius: 4px; padding: 0.5rem 1rem;
+  cursor: pointer; font-weight: 500; transition: background 0.15s;
+}
+.dash-run-btn:hover { background: var(--amber2); }
+.dash-body { padding: 2rem; max-width: 860px; margin: 0 auto; width: 100%; }
+.dash-section-label {
+  font-family: var(--mono); font-size: 0.55rem; color: var(--muted);
+  letter-spacing: 0.12em; text-transform: uppercase;
+  margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
+}
+.dash-section-label::before { content: ''; display: block; width: 16px; height: 1px; background: var(--border2); }
+
+/* Score hero */
+.dash-hero {
+  display: grid; grid-template-columns: auto 1fr; gap: 2rem;
+  background: var(--ink2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 1.75rem; margin-bottom: 1.5rem;
+  align-items: center;
+}
+.dash-score-circle {
+  width: 110px; height: 110px; border-radius: 50%;
+  border: 2px solid var(--border2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex-shrink: 0; position: relative;
+}
+.dash-score-circle.elevated { border-color: var(--red); box-shadow: 0 0 24px rgba(240,79,79,0.15); }
+.dash-score-circle.moderate { border-color: var(--amber); box-shadow: 0 0 24px rgba(245,166,35,0.12); }
+.dash-score-circle.low      { border-color: var(--green); box-shadow: 0 0 24px rgba(31,201,122,0.12); }
+.dash-score-num  { font-family: var(--display); font-size: 2.4rem; color: var(--bone); line-height: 1; }
+.dash-score-denom { font-family: var(--mono); font-size: 0.5rem; color: var(--muted); letter-spacing: 0.06em; }
+.dash-score-tier {
+  font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.1em;
+  text-transform: uppercase; margin-top: 0.25rem;
+}
+.dash-score-tier.elevated { color: var(--red); }
+.dash-score-tier.moderate { color: var(--amber); }
+.dash-score-tier.low      { color: var(--green); }
+.dash-hero-right {}
+.dash-hero-label { font-family: var(--mono); font-size: 0.55rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.5rem; }
+.dash-hero-sig { font-size: 0.85rem; color: var(--bone2); line-height: 1.6; margin-bottom: 1.25rem; font-style: italic; }
+.dash-dims { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.dash-dim {
+  background: var(--ink3); border: 1px solid var(--border);
+  border-radius: 4px; padding: 0.6rem 0.75rem;
+}
+.dash-dim-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; }
+.dash-dim-key  { font-family: var(--mono); font-size: 0.55rem; color: var(--bone2); letter-spacing: 0.08em; text-transform: uppercase; }
+.dash-dim-val  { font-family: var(--mono); font-size: 0.65rem; color: var(--amber); }
+.dash-dim-bar  { height: 3px; background: var(--border2); border-radius: 2px; overflow: hidden; }
+.dash-dim-fill { height: 100%; background: var(--amber); border-radius: 2px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+
+/* History table */
+.dash-history {
+  background: var(--ink2); border: 1px solid var(--border);
+  border-radius: 8px; overflow: hidden;
+}
+.dash-history-row {
+  display: grid; grid-template-columns: 1fr auto auto auto;
+  gap: 1rem; align-items: center;
+  padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border);
+  transition: background 0.12s;
+}
+.dash-history-row:last-child { border-bottom: none; }
+.dash-history-row:hover { background: var(--ink3); }
+.dash-history-header { background: var(--ink3) !important; }
+.dash-history-header:hover { background: var(--ink3) !important; }
+.dash-h-label { font-family: var(--mono); font-size: 0.52rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+.dash-h-date  { font-family: var(--mono); font-size: 0.72rem; color: var(--bone2); }
+.dash-h-door  { font-family: var(--mono); font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.dash-h-score { font-family: var(--mono); font-size: 0.75rem; color: var(--amber); }
+.dash-h-tier  { font-family: var(--mono); font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.2rem 0.5rem; border-radius: 3px; }
+.dash-h-tier.elevated { color: var(--red);   background: rgba(240,79,79,0.1); }
+.dash-h-tier.moderate { color: var(--amber); background: var(--amber-d); }
+.dash-h-tier.low      { color: var(--green); background: var(--green-d); }
+.dash-empty { font-family: var(--mono); font-size: 0.65rem; color: var(--muted); text-align: center; padding: 2rem; letter-spacing: 0.06em; }
 html { scroll-behavior: smooth; }
 body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
 
@@ -62,7 +157,59 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
 .stage.active { display: flex; flex-direction: column; }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   STAGE AUTH — LOGIN / SIGNUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#stage-auth {
+  background: var(--ink);
+  align-items: center; justify-content: center;
+  padding: 2rem;
+}
+.auth-inner { width: 100%; max-width: 400px; }
+.auth-veros-mark {
+  display: flex; align-items: center; gap: 0.6rem;
+  margin-bottom: 2.5rem;
+}
+.auth-title { font-family: var(--display); font-size: clamp(2rem,6vw,3.5rem); color: var(--bone); line-height: 1; letter-spacing: 0.03em; margin-bottom: 0.4rem; }
+.auth-sub { font-size: 0.8rem; font-weight: 300; color: var(--bone2); margin-bottom: 2rem; line-height: 1.6; }
+.auth-tabs { display: flex; gap: 0; margin-bottom: 1.75rem; border-bottom: 1px solid var(--border); }
+.auth-tab { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); background: none; border: none; padding: 0.6rem 1rem 0.7rem; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+.auth-tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+.auth-field { margin-bottom: 1rem; }
+.auth-label { font-family: var(--mono); font-size: 0.55rem; color: var(--bone2); letter-spacing: 0.1em; text-transform: uppercase; display: block; margin-bottom: 0.4rem; }
+.auth-input {
+  width: 100%; background: var(--ink2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 0.65rem 0.85rem;
+  font-size: 0.85rem; font-family: var(--sans); color: var(--bone);
+  outline: none; transition: border-color 0.15s;
+}
+.auth-input:focus { border-color: var(--amber); }
+.auth-input::placeholder { color: var(--muted); }
+.auth-btn {
+  width: 100%; font-family: var(--mono); font-size: 0.65rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  background: var(--amber); color: var(--ink);
+  border: none; border-radius: 4px; padding: 0.8rem;
+  cursor: pointer; font-weight: 500; transition: background 0.15s;
+  margin-top: 0.5rem;
+}
+.auth-btn:hover { background: var(--amber2); }
+.auth-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.auth-error { font-family: var(--mono); font-size: 0.6rem; color: var(--red); letter-spacing: 0.05em; margin-top: 0.75rem; min-height: 1rem; text-align: center; }
+.auth-success { font-family: var(--mono); font-size: 0.6rem; color: var(--green); letter-spacing: 0.05em; margin-top: 0.75rem; min-height: 1rem; text-align: center; }
+.auth-user-bar {
+  position: fixed; top: 0; right: 0; z-index: 999;
+  display: none; align-items: center; gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: var(--ink2); border-bottom-left-radius: 6px;
+  border: 1px solid var(--border); border-top: none; border-right: none;
+}
+.auth-user-bar.visible { display: flex; }
+.auth-user-email { font-family: var(--mono); font-size: 0.52rem; color: var(--muted); letter-spacing: 0.06em; }
+.auth-signout { font-family: var(--mono); font-size: 0.52rem; color: var(--amber); background: none; border: none; cursor: pointer; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    STAGE 0 — DOOR SELECTION
+   Veros-branded (internal/demo only)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 #stage-door {
   background: var(--ink);
@@ -123,6 +270,7 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    STAGE 1a — L&D DISGUISE
+   Looks like a real HR platform
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 #stage-ld {
   background: var(--ld-bg);
@@ -193,6 +341,7 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    STAGE 1b — IT DISGUISE
+   Looks like an enterprise access portal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 #stage-it {
   background: var(--it-bg);
@@ -357,6 +506,7 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
 
 .profile-body { flex:1; padding:2.5rem 1.5rem 4rem; max-width:700px; margin:0 auto; width:100%; }
 
+/* Profile header */
 .profile-head { margin-bottom:2rem; padding-bottom:1.5rem; border-bottom:1px solid var(--border); }
 .profile-head-eyebrow { font-family:var(--mono); font-size:0.58rem; color:var(--amber); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.5rem; }
 .profile-head-title { font-family:var(--display); font-size:clamp(2.5rem,8vw,4.5rem); color:var(--bone); line-height:0.95; letter-spacing:0.03em; margin-bottom:0.5rem; }
@@ -364,6 +514,7 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
 .profile-head-meta-item { font-family:var(--mono); font-size:0.55rem; color:var(--muted); letter-spacing:0.06em; }
 .profile-head-meta-sep { width:2px; height:2px; border-radius:50%; background:var(--dim); }
 
+/* IBRI score */
 .ibri-score-block { background:var(--ink2); border:1px solid var(--border); border-radius:6px; overflow:hidden; margin-bottom:1.5rem; }
 .ibri-score-top { display:flex; align-items:center; justify-content:space-between; padding:0.85rem 1rem; border-bottom:1px solid var(--border); }
 .ibri-score-label { font-family:var(--mono); font-size:0.6rem; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; }
@@ -389,6 +540,7 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
 .ibri-dim-val.elevated { color:var(--amber); }
 .ibri-dim-val.high     { color:var(--red); }
 
+/* Profile insights */
 .profile-insights { display:flex; flex-direction:column; gap:0.75rem; margin-bottom:1.5rem; }
 .insight-card { background:var(--ink2); border:1px solid var(--border); border-left:2px solid transparent; border-radius:6px; padding:1rem; }
 .insight-card.fv { border-left-color:var(--red); }
@@ -405,10 +557,12 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
 .insight-card-txt { font-size:0.8rem; font-weight:300; color:var(--bone2); line-height:1.6; }
 .insight-card-txt b { color:var(--bone); font-weight:500; }
 
+/* Profile loading state */
 .profile-loading { display:flex; align-items:center; gap:0.6rem; padding:1rem; }
 .profile-loading-dot { width:6px; height:6px; border-radius:50%; background:var(--amber); animation:blip 1s ease infinite; }
 .profile-loading-txt { font-family:var(--mono); font-size:0.62rem; color:var(--muted); letter-spacing:0.06em; }
 
+/* Profile CTA */
 .profile-cta-block { background:var(--ink2); border:1px solid var(--border); border-radius:6px; padding:1.25rem; display:flex; gap:1rem; align-items:flex-start; }
 .profile-cta-icon { font-family:var(--mono); font-size:0.7rem; color:var(--amber); flex-shrink:0; margin-top:0.05rem; }
 .profile-cta-body { flex:1; }
@@ -437,6 +591,142 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
 </style>
 </head>
 <body>
+
+<!-- ══════════════════════════════════
+     AUTH USER BAR (persistent overlay)
+══════════════════════════════════ -->
+<div class="auth-user-bar" id="authUserBar">
+  <span class="auth-user-email" id="authUserEmail"></span>
+  <button class="auth-signout" onclick="signOut()">Sign out</button>
+</div>
+
+<!-- ══════════════════════════════════
+     STAGE AUTH — L&D DISGUISE
+     Looks like an HR/learning portal
+══════════════════════════════════ -->
+<div class="stage" id="stage-auth-ld">
+  <div style="background:var(--ld-bg);min-height:100vh;display:flex;flex-direction:column;">
+    <!-- Nav bar matching LD disguise -->
+    <div class="ld-nav">
+      <div class="ld-nav-brand">
+        <div class="ld-nav-logo"><div class="ld-nav-logo-inner"></div></div>
+        <span class="ld-nav-name">Learn<span>Path</span></span>
+      </div>
+      <span class="ld-nav-user">Employee Development Portal</span>
+    </div>
+    <!-- Auth card -->
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:2rem;">
+      <div style="width:100%;max-width:420px;">
+        <div style="background:white;border:1px solid var(--ld-border);border-radius:12px;padding:2.25rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:var(--ld-accent);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.4rem;">Employee Access</div>
+          <div style="font-size:1.2rem;font-weight:600;color:var(--ld-text);margin-bottom:0.35rem;">Sign in to LearnPath</div>
+          <div style="font-size:0.82rem;color:var(--ld-muted);margin-bottom:1.75rem;line-height:1.5;">Access your personalized learning dashboard and development profile. New employee? Create your account below.</div>
+          <!-- Tabs -->
+          <div style="display:flex;border-bottom:1px solid var(--ld-border);margin-bottom:1.5rem;">
+            <button class="ld-auth-tab active" id="ldTabLogin" onclick="ldSwitchTab('login')" style="font-size:0.78rem;font-weight:600;color:var(--ld-accent);background:none;border:none;padding:0.5rem 1rem 0.6rem;cursor:pointer;border-bottom:2px solid var(--ld-accent);margin-bottom:-1px;">Sign In</button>
+            <button class="ld-auth-tab" id="ldTabSignup" onclick="ldSwitchTab('signup')" style="font-size:0.78rem;font-weight:500;color:var(--ld-muted);background:none;border:none;border-bottom:2px solid transparent;padding:0.5rem 1rem 0.6rem;cursor:pointer;margin-bottom:-1px;">New Employee</button>
+          </div>
+          <!-- Login -->
+          <div id="ldAuthLogin">
+            <div style="margin-bottom:1rem;">
+              <label style="font-size:0.72rem;font-weight:600;color:var(--ld-muted);letter-spacing:0.04em;text-transform:uppercase;display:block;margin-bottom:0.4rem;">Work Email</label>
+              <input class="ld-textarea" id="ldLoginEmail" type="email" placeholder="you@company.com" style="min-height:unset;height:42px;resize:none;padding:0.6rem 0.85rem;" />
+            </div>
+            <div style="margin-bottom:1.25rem;">
+              <label style="font-size:0.72rem;font-weight:600;color:var(--ld-muted);letter-spacing:0.04em;text-transform:uppercase;display:block;margin-bottom:0.4rem;">Password</label>
+              <input class="ld-textarea" id="ldLoginPassword" type="password" placeholder="••••••••" style="min-height:unset;height:42px;resize:none;padding:0.6rem 0.85rem;" />
+            </div>
+            <button class="ld-btn-next" id="ldLoginBtn" onclick="signIn('ld')" style="width:100%;justify-content:center;">Access My Dashboard →</button>
+          </div>
+          <!-- Signup -->
+          <div id="ldAuthSignup" style="display:none;">
+            <div style="margin-bottom:1rem;">
+              <label style="font-size:0.72rem;font-weight:600;color:var(--ld-muted);letter-spacing:0.04em;text-transform:uppercase;display:block;margin-bottom:0.4rem;">Work Email</label>
+              <input class="ld-textarea" id="ldSignupEmail" type="email" placeholder="you@company.com" style="min-height:unset;height:42px;resize:none;padding:0.6rem 0.85rem;" />
+            </div>
+            <div style="margin-bottom:1.25rem;">
+              <label style="font-size:0.72rem;font-weight:600;color:var(--ld-muted);letter-spacing:0.04em;text-transform:uppercase;display:block;margin-bottom:0.4rem;">Create Password</label>
+              <input class="ld-textarea" id="ldSignupPassword" type="password" placeholder="8+ characters" style="min-height:unset;height:42px;resize:none;padding:0.6rem 0.85rem;" />
+            </div>
+            <button class="ld-btn-next" id="ldSignupBtn" onclick="signUp('ld')" style="width:100%;justify-content:center;">Create My Account →</button>
+          </div>
+          <div style="font-size:0.75rem;color:var(--red);margin-top:0.75rem;min-height:1rem;text-align:center;" id="ldAuthError"></div>
+          <div style="font-size:0.75rem;color:#059669;margin-top:0.75rem;min-height:1rem;text-align:center;" id="ldAuthSuccess"></div>
+        </div>
+        <div style="text-align:center;margin-top:1rem;">
+          <button onclick="showStage('stage-door')" style="font-size:0.75rem;color:var(--ld-muted);background:none;border:none;cursor:pointer;">← Back</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     STAGE AUTH — IT DISGUISE
+     Looks like an enterprise access portal
+══════════════════════════════════ -->
+<div class="stage" id="stage-auth-it">
+  <div style="background:var(--it-bg);min-height:100vh;display:flex;flex-direction:column;">
+    <!-- IT portal header -->
+    <div style="background:var(--it-surface);border-bottom:1px solid var(--it-border);padding:0 2rem;height:54px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:0.6rem;">
+        <div style="width:26px;height:26px;background:var(--it-accent);border-radius:4px;display:flex;align-items:center;justify-content:center;">
+          <div style="width:10px;height:10px;border:2px solid white;border-radius:2px;"></div>
+        </div>
+        <span style="font-size:0.88rem;font-weight:600;color:var(--it-text);">SecureAccess</span>
+        <span style="font-size:0.75rem;color:var(--it-muted);margin-left:0.25rem;">· IT Identity & Access Management</span>
+      </div>
+      <span style="font-family:monospace;font-size:0.7rem;color:var(--it-muted);">TLS 1.3 · Encrypted</span>
+    </div>
+    <!-- Auth card -->
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:2rem;">
+      <div style="width:100%;max-width:420px;">
+        <div style="background:white;border:1px solid var(--it-border);border-radius:8px;padding:2rem;">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.25rem;">
+            <div style="width:8px;height:8px;background:#22c55e;border-radius:50%;"></div>
+            <span style="font-family:monospace;font-size:0.65rem;color:var(--it-muted);letter-spacing:0.06em;">SECURE CONNECTION ESTABLISHED</span>
+          </div>
+          <div style="font-size:1.1rem;font-weight:600;color:var(--it-text);margin-bottom:0.3rem;">Access Profile Authentication</div>
+          <div style="font-size:0.8rem;color:var(--it-muted);margin-bottom:1.75rem;line-height:1.5;">Authenticate to complete your IT access profile configuration. First-time users must register before proceeding.</div>
+          <!-- Tabs -->
+          <div style="display:flex;border-bottom:1px solid var(--it-border);margin-bottom:1.5rem;">
+            <button id="itTabLogin" onclick="itSwitchTab('login')" style="font-size:0.78rem;font-weight:600;color:var(--it-accent);background:none;border:none;border-bottom:2px solid var(--it-accent);padding:0.5rem 1rem 0.6rem;cursor:pointer;margin-bottom:-1px;">Existing User</button>
+            <button id="itTabSignup" onclick="itSwitchTab('signup')" style="font-size:0.78rem;font-weight:500;color:var(--it-muted);background:none;border:none;border-bottom:2px solid transparent;padding:0.5rem 1rem 0.6rem;cursor:pointer;margin-bottom:-1px;">Register</button>
+          </div>
+          <!-- Login -->
+          <div id="itAuthLogin">
+            <div style="margin-bottom:0.9rem;">
+              <label style="font-family:monospace;font-size:0.62rem;color:var(--it-muted);letter-spacing:0.08em;text-transform:uppercase;display:block;margin-bottom:0.35rem;">Corporate Email</label>
+              <input id="itLoginEmail" type="email" placeholder="you@company.com" style="width:100%;border:1px solid var(--it-border);border-radius:4px;padding:0.6rem 0.85rem;font-size:0.85rem;color:var(--it-text);outline:none;font-family:inherit;" onfocus="this.style.borderColor='var(--it-accent)'" onblur="this.style.borderColor='var(--it-border)'" />
+            </div>
+            <div style="margin-bottom:1.25rem;">
+              <label style="font-family:monospace;font-size:0.62rem;color:var(--it-muted);letter-spacing:0.08em;text-transform:uppercase;display:block;margin-bottom:0.35rem;">Password</label>
+              <input id="itLoginPassword" type="password" placeholder="••••••••" style="width:100%;border:1px solid var(--it-border);border-radius:4px;padding:0.6rem 0.85rem;font-size:0.85rem;color:var(--it-text);outline:none;font-family:inherit;" onfocus="this.style.borderColor='var(--it-accent)'" onblur="this.style.borderColor='var(--it-border)'" />
+            </div>
+            <button id="itLoginBtn" onclick="signIn('it')" style="width:100%;background:var(--it-accent);color:white;border:none;border-radius:4px;padding:0.65rem;font-size:0.85rem;font-weight:600;cursor:pointer;">Authenticate →</button>
+          </div>
+          <!-- Signup -->
+          <div id="itAuthSignup" style="display:none;">
+            <div style="margin-bottom:0.9rem;">
+              <label style="font-family:monospace;font-size:0.62rem;color:var(--it-muted);letter-spacing:0.08em;text-transform:uppercase;display:block;margin-bottom:0.35rem;">Corporate Email</label>
+              <input id="itSignupEmail" type="email" placeholder="you@company.com" style="width:100%;border:1px solid var(--it-border);border-radius:4px;padding:0.6rem 0.85rem;font-size:0.85rem;color:var(--it-text);outline:none;font-family:inherit;" onfocus="this.style.borderColor='var(--it-accent)'" onblur="this.style.borderColor='var(--it-border)'" />
+            </div>
+            <div style="margin-bottom:1.25rem;">
+              <label style="font-family:monospace;font-size:0.62rem;color:var(--it-muted);letter-spacing:0.08em;text-transform:uppercase;display:block;margin-bottom:0.35rem;">Set Password</label>
+              <input id="itSignupPassword" type="password" placeholder="8+ characters" style="width:100%;border:1px solid var(--it-border);border-radius:4px;padding:0.6rem 0.85rem;font-size:0.85rem;color:var(--it-text);outline:none;font-family:inherit;" onfocus="this.style.borderColor='var(--it-accent)'" onblur="this.style.borderColor='var(--it-border)'" />
+            </div>
+            <button id="itSignupBtn" onclick="signUp('it')" style="width:100%;background:var(--it-accent);color:white;border:none;border-radius:4px;padding:0.65rem;font-size:0.85rem;font-weight:600;cursor:pointer;">Register & Continue →</button>
+          </div>
+          <div style="font-size:0.75rem;color:var(--red);margin-top:0.75rem;min-height:1rem;text-align:center;" id="itAuthError"></div>
+          <div style="font-size:0.75rem;color:#059669;margin-top:0.75rem;min-height:1rem;text-align:center;" id="itAuthSuccess"></div>
+        </div>
+        <div style="text-align:center;margin-top:1rem;">
+          <button onclick="showStage('stage-door')" style="font-size:0.75rem;color:var(--it-muted);background:none;border:none;cursor:pointer;">← Back</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════
      STAGE 0 — DOOR SELECTION
@@ -526,7 +816,7 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
         <div class="ld-q-text">Describe what a normal workday looks like for you in 2–3 sentences.</div>
         <textarea class="ld-textarea" id="ldA3" placeholder="Walk us through your usual day..."></textarea>
       </div>
-      <!-- Q4 -->
+      <!-- Q4 — Cognitive susceptibility -->
       <div class="ld-q" id="ldq4">
         <div class="ld-q-label">Learning Style</div>
         <div class="ld-q-text">When you're given an unfamiliar topic and don't know where to start, what's your natural approach?</div>
@@ -537,7 +827,7 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
           <div class="ld-option" data-val="Jump in — I learn best by attempting the task and figuring it out as I go." onclick="selectLdOpt(this,4)"><div class="ld-option-radio"></div><span class="ld-option-text">Jump in — learn by attempting the task and figuring it out.</span></div>
         </div>
       </div>
-      <!-- Q5 -->
+      <!-- Q5 — Fatigue vulnerability -->
       <div class="ld-q" id="ldq5">
         <div class="ld-q-label">Workload & Pressure</div>
         <div class="ld-q-text">How do you handle learning tasks or new requests when your schedule is already packed or you're under deadline pressure?</div>
@@ -548,13 +838,13 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
           <div class="ld-option" data-val="I push through regardless — I don't like things sitting unactioned." onclick="selectLdOpt(this,5)"><div class="ld-option-radio"></div><span class="ld-option-text">Push through — I don't like things sitting unactioned.</span></div>
         </div>
       </div>
-      <!-- Q6 -->
+      <!-- Q6 — Social compliance -->
       <div class="ld-q" id="ldq6">
         <div class="ld-q-label">Workplace Dynamics</div>
         <div class="ld-q-text">Describe a time you had to navigate a disagreement or tension with a colleague. How did you approach it?</div>
         <textarea class="ld-textarea" id="ldA6" placeholder="Share a brief example..."></textarea>
       </div>
-      <!-- Q7 -->
+      <!-- Q7 — Integrity anchor -->
       <div class="ld-q" id="ldq7">
         <div class="ld-q-label">Core Values</div>
         <div class="ld-q-text">What core value most influences how you make decisions at work?</div>
@@ -565,7 +855,7 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
           <div class="ld-option" data-val="Impact — focusing on outcomes that matter and move things forward." onclick="selectLdOpt(this,7)"><div class="ld-option-radio"></div><span class="ld-option-text">Impact — outcomes that matter and move things forward.</span></div>
         </div>
       </div>
-      <!-- Q8 -->
+      <!-- Q8 — Exposure profile -->
       <div class="ld-q" id="ldq8">
         <div class="ld-q-label">Professional Presence</div>
         <div class="ld-q-text">How comfortable are you sharing work accomplishments or professional updates publicly — on LinkedIn or internal channels?</div>
@@ -652,7 +942,7 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
           <div class="it-field-sub">Describe how you typically interact with company systems during a normal working day. Used for access anomaly baseline configuration.</div>
           <textarea class="it-textarea" id="itA3" placeholder="Describe your typical system usage..."></textarea>
         </div>
-        <!-- Q4 -->
+        <!-- Q4 — Cognitive susceptibility -->
         <div class="it-q" id="itq4">
           <div class="it-field-label">Technical Issue Resolution Protocol <span class="req">*</span></div>
           <div class="it-field-sub">When you encounter an unfamiliar technical issue, what is your standard first step?</div>
@@ -663,7 +953,7 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
             <div class="it-radio-item" data-val="Escalate immediately to avoid risk of causing further issues." onclick="selectItOpt(this,4)"><div class="it-radio-dot"></div><span class="it-radio-text">Escalate immediately to avoid risk of causing further issues.</span></div>
           </div>
         </div>
-        <!-- Q5 -->
+        <!-- Q5 — Fatigue vulnerability -->
         <div class="it-q" id="itq5">
           <div class="it-field-label">Alert & Request Management Under Load <span class="req">*</span></div>
           <div class="it-field-sub">How do you typically handle system alerts or IT requests during high-volume or high-pressure periods?</div>
@@ -671,16 +961,16 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
             <div class="it-radio-item" data-val="Triage and action all alerts systematically regardless of workload." onclick="selectItOpt(this,5)"><div class="it-radio-dot"></div><span class="it-radio-text">Triage and action all alerts systematically regardless of workload.</span></div>
             <div class="it-radio-item" data-val="Prioritize critical items and defer lower-priority alerts." onclick="selectItOpt(this,5)"><div class="it-radio-dot"></div><span class="it-radio-text">Prioritize critical items and defer lower-priority alerts.</span></div>
             <div class="it-radio-item" data-val="Action urgent requests immediately and handle the rest when volume decreases." onclick="selectItOpt(this,5)"><div class="it-radio-dot"></div><span class="it-radio-text">Action urgent requests immediately, handle rest when volume decreases.</span></div>
-            <div class="it-radio-item" data-val="Route all non-essential requests to a colleague during high-demand periods." onclick="selectItOpt(this,5)"><div class="it-radio-dot"></div><span class="it-radio-text">Route non-essential requests to a colleague during high-demand periods.</span></div>
+            <div class="it-radio-item" data-val="Route all non-essential requests to a colleague during high-demand periods." onclick="selectItOpt(this,5)"><div class="it-radio-dot"></div><span class="ld-option-text">Route non-essential requests to a colleague during high-demand periods.</span></div>
           </div>
         </div>
-        <!-- Q6 -->
+        <!-- Q6 — Social compliance -->
         <div class="it-q" id="itq6">
           <div class="it-field-label">Credential & Access Sharing Protocol <span class="req">*</span></div>
           <div class="it-field-sub">If a colleague required temporary use of your credentials or system access to meet a critical deadline, how would you handle the request?</div>
           <textarea class="it-textarea" id="itA6" placeholder="Describe how you would handle this situation..."></textarea>
         </div>
-        <!-- Q7 -->
+        <!-- Q7 — Integrity anchor -->
         <div class="it-q" id="itq7">
           <div class="it-field-label">Security Policy Acknowledgement <span class="req">*</span></div>
           <div class="it-field-sub">Which statement best reflects your approach to organizational security policies?</div>
@@ -691,7 +981,7 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
             <div class="it-radio-item" data-val="I escalate when policies are unclear rather than making independent decisions." onclick="selectItOpt(this,7)"><div class="it-radio-dot"></div><span class="it-radio-text">Escalate when policies are unclear rather than deciding independently.</span></div>
           </div>
         </div>
-        <!-- Q8 -->
+        <!-- Q8 — Exposure profile -->
         <div class="it-q" id="itq8">
           <div class="it-field-label">External Digital Footprint <span class="req">*</span></div>
           <div class="it-field-sub">Describe your level of professional activity on external platforms such as LinkedIn. Used for social engineering risk baseline configuration.</div>
@@ -714,22 +1004,19 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
 
 <!-- ══════════════════════════════════
      STAGE 2 — PROCESSING
-     Label and steps are set dynamically
-     by submitProfile() — no Veros
-     language appears here until reveal.
 ══════════════════════════════════ -->
 <div class="stage" id="stage-processing">
   <div class="proc-inner">
     <div class="proc-mark"><div class="proc-mark-inner"></div></div>
-    <div class="proc-label" id="procLabel"></div>
+    <div class="proc-label">Veros is processing your responses</div>
     <div class="proc-steps">
-      <div class="proc-step" id="ps1"><div class="proc-step-pip"></div><span class="proc-step-txt" id="pst1"></span><span class="proc-step-check">✓</span></div>
-      <div class="proc-step" id="ps2"><div class="proc-step-pip"></div><span class="proc-step-txt" id="pst2"></span><span class="proc-step-check">✓</span></div>
-      <div class="proc-step" id="ps3"><div class="proc-step-pip"></div><span class="proc-step-txt" id="pst3"></span><span class="proc-step-check">✓</span></div>
-      <div class="proc-step" id="ps4"><div class="proc-step-pip"></div><span class="proc-step-txt" id="pst4"></span><span class="proc-step-check">✓</span></div>
-      <div class="proc-step" id="ps5"><div class="proc-step-pip"></div><span class="proc-step-txt" id="pst5"></span><span class="proc-step-check">✓</span></div>
-      <div class="proc-step" id="ps6"><div class="proc-step-pip"></div><span class="proc-step-txt" id="pst6"></span><span class="proc-step-check">✓</span></div>
-      <div class="proc-step" id="ps7"><div class="proc-step-pip"></div><span class="proc-step-txt" id="pst7"></span><span class="proc-step-check">✓</span></div>
+      <div class="proc-step" id="ps1"><div class="proc-step-pip"></div><span class="proc-step-txt">Parsing behavioral signal from responses</span><span class="proc-step-check">✓</span></div>
+      <div class="proc-step" id="ps2"><div class="proc-step-pip"></div><span class="proc-step-txt">Mapping to IBRI dimensions</span><span class="proc-step-check">✓</span></div>
+      <div class="proc-step" id="ps3"><div class="proc-step-pip"></div><span class="proc-step-txt">Scoring Fatigue Vulnerability</span><span class="proc-step-check">✓</span></div>
+      <div class="proc-step" id="ps4"><div class="proc-step-pip"></div><span class="proc-step-txt">Scoring Social Compliance</span><span class="proc-step-check">✓</span></div>
+      <div class="proc-step" id="ps5"><div class="proc-step-pip"></div><span class="proc-step-txt">Scoring Risk Rationalization</span><span class="proc-step-check">✓</span></div>
+      <div class="proc-step" id="ps6"><div class="proc-step-pip"></div><span class="proc-step-txt">Scoring Exposure Awareness</span><span class="proc-step-check">✓</span></div>
+      <div class="proc-step" id="ps7"><div class="proc-step-pip"></div><span class="proc-step-txt">Generating behavioral signature</span><span class="proc-step-check">✓</span></div>
     </div>
   </div>
 </div>
@@ -793,6 +1080,7 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
       </div>
     </div>
 
+    <!-- IBRI Score — populated by API -->
     <div class="ibri-score-block" id="ibriBlock">
       <div class="ibri-score-top">
         <span class="ibri-score-label">IBRI Composite Score</span>
@@ -810,8 +1098,10 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
       </div>
     </div>
 
+    <!-- Insights — populated by API -->
     <div id="insightsBlock"></div>
 
+    <!-- CTA to Pulse System -->
     <div class="profile-cta-block">
       <div class="profile-cta-icon">▸</div>
       <div class="profile-cta-body">
@@ -829,47 +1119,109 @@ body { font-family: var(--sans); min-height: 100vh; overflow-x: hidden; -webkit-
 
 <script>
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SUPABASE INIT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+const SUPA_URL = 'https://zswwlrtpcywzbjssdoyd.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpzd3dscnRwY3l3emJqc3Nkb3lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTg1NzcsImV4cCI6MjA4ODgzNDU3N30.VvvzZEw3jnD5fIZAONkpjz7Bhk4_CLy01_qpnj9VfHA';
+const { createClient } = supabase;
+const db = createClient(SUPA_URL, SUPA_KEY);
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    STATE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 const S = {
-  door: null,
-  ldQ: 1,
-  itQ: 1,
-  answers: {},
-  ibriData: null,
+  door: null,      // 'ld' | 'it'
+  ldQ: 1,          // current LD question
+  itQ: 1,          // current IT question
+  answers: {},     // all collected answers
+  ibriData: null,  // API response
+  user: null,      // authenticated Supabase user
 };
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   PROCESSING COPY — door-aware
-   No Veros language. Stays inside
-   the disguise until the reveal.
+   AUTH — INIT & SESSION CHECK
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-const PROC_COPY = {
-  ld: {
-    label: 'Building your learning profile...',
-    steps: [
-      'Reviewing your role and team context',
-      'Mapping your tool and platform preferences',
-      'Analyzing your workday patterns',
-      'Identifying your learning style',
-      'Evaluating how you work under pressure',
-      'Assessing your collaboration approach',
-      'Generating your personalized learning path',
-    ]
-  },
-  it: {
-    label: 'Configuring your access profile...',
-    steps: [
-      'Validating role and department information',
-      'Reviewing systems and access requirements',
-      'Establishing usage pattern baseline',
-      'Evaluating issue resolution approach',
-      'Assessing alert and request handling',
-      'Reviewing policy alignment responses',
-      'Provisioning access tier configuration',
-    ]
+(async () => {
+  const { data: { session } } = await db.auth.getSession();
+  if (session?.user) {
+    S.user = session.user;
+    showUserBar(session.user.email);
   }
-};
+  showStage('stage-door');
+  db.auth.onAuthStateChange((_event, session) => {
+    if (session?.user) { S.user = session.user; showUserBar(session.user.email); }
+    else { S.user = null; hideUserBar(); }
+  });
+})();
+
+function showUserBar(email) {
+  document.getElementById('authUserEmail').textContent = email;
+  document.getElementById('authUserBar').classList.add('visible');
+}
+function hideUserBar() {
+  document.getElementById('authUserBar').classList.remove('visible');
+}
+
+// L&D auth tab switching
+function ldSwitchTab(tab) {
+  document.getElementById('ldAuthLogin').style.display  = tab === 'login'  ? 'block' : 'none';
+  document.getElementById('ldAuthSignup').style.display = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('ldTabLogin').style.cssText  += tab === 'login'  ? ';color:var(--ld-accent);border-bottom:2px solid var(--ld-accent);font-weight:600;' : ';color:var(--ld-muted);border-bottom:2px solid transparent;font-weight:500;';
+  document.getElementById('ldTabSignup').style.cssText += tab === 'signup' ? ';color:var(--ld-accent);border-bottom:2px solid var(--ld-accent);font-weight:600;' : ';color:var(--ld-muted);border-bottom:2px solid transparent;font-weight:500;';
+  document.getElementById('ldAuthError').textContent = '';
+  document.getElementById('ldAuthSuccess').textContent = '';
+}
+
+// IT auth tab switching
+function itSwitchTab(tab) {
+  document.getElementById('itAuthLogin').style.display  = tab === 'login'  ? 'block' : 'none';
+  document.getElementById('itAuthSignup').style.display = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('itTabLogin').style.cssText  += tab === 'login'  ? ';color:var(--it-accent);border-bottom:2px solid var(--it-accent);font-weight:600;' : ';color:var(--it-muted);border-bottom:2px solid transparent;font-weight:500;';
+  document.getElementById('itTabSignup').style.cssText += tab === 'signup' ? ';color:var(--it-accent);border-bottom:2px solid var(--it-accent);font-weight:600;' : ';color:var(--it-muted);border-bottom:2px solid transparent;font-weight:500;';
+  document.getElementById('itAuthError').textContent = '';
+  document.getElementById('itAuthSuccess').textContent = '';
+}
+
+async function signIn(door) {
+  const email    = document.getElementById(door === 'ld' ? 'ldLoginEmail'    : 'itLoginEmail').value.trim();
+  const password = document.getElementById(door === 'ld' ? 'ldLoginPassword' : 'itLoginPassword').value;
+  const btn      = document.getElementById(door === 'ld' ? 'ldLoginBtn'      : 'itLoginBtn');
+  const errEl    = document.getElementById(door === 'ld' ? 'ldAuthError'     : 'itAuthError');
+  if (!email || !password) { errEl.textContent = 'Email and password required.'; return; }
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  const { error } = await db.auth.signInWithPassword({ email, password });
+  btn.disabled = false;
+  btn.textContent = door === 'ld' ? 'Access My Dashboard →' : 'Authenticate →';
+  if (error) { errEl.textContent = error.message; return; }
+  // Auth success — proceed directly into the chosen door
+  S.answers = {};
+  if (door === 'ld') { S.ldQ = 1; showStage('stage-ld'); updateLdUI(); }
+  else               { S.itQ = 1; showStage('stage-it'); updateItUI(); }
+}
+
+async function signUp(door) {
+  const email    = document.getElementById(door === 'ld' ? 'ldSignupEmail'    : 'itSignupEmail').value.trim();
+  const password = document.getElementById(door === 'ld' ? 'ldSignupPassword' : 'itSignupPassword').value;
+  const btn      = document.getElementById(door === 'ld' ? 'ldSignupBtn'      : 'itSignupBtn');
+  const errEl    = document.getElementById(door === 'ld' ? 'ldAuthError'      : 'itAuthError');
+  const sucEl    = document.getElementById(door === 'ld' ? 'ldAuthSuccess'    : 'itAuthSuccess');
+  if (!email || !password) { errEl.textContent = 'Email and password required.'; return; }
+  if (password.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+  btn.disabled = true; btn.textContent = 'Creating account...';
+  const { error } = await db.auth.signUp({ email, password });
+  btn.disabled = false;
+  btn.textContent = door === 'ld' ? 'Create My Account →' : 'Register & Continue →';
+  if (error) { errEl.textContent = error.message; return; }
+  sucEl.textContent = 'Account created! Check your email to confirm, then sign in.';
+  if (door === 'ld') ldSwitchTab('login');
+  else               itSwitchTab('login');
+}
+
+async function signOut() {
+  await db.auth.signOut();
+  S.user = null; S.ibriData = null; S.answers = {}; S.door = null;
+  showStage('stage-door');
+}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    STAGE MANAGEMENT
@@ -893,15 +1245,14 @@ function selectDoor(card) {
 function launchDoor() {
   if (!S.door) return;
   S.answers = {};
-  if (S.door === 'ld') {
-    S.ldQ = 1;
-    showStage('stage-ld');
-    updateLdUI();
-  } else {
-    S.itQ = 1;
-    showStage('stage-it');
-    updateItUI();
+  // If already authenticated, go straight to the questionnaire
+  if (S.user) {
+    if (S.door === 'ld') { S.ldQ = 1; showStage('stage-ld'); updateLdUI(); }
+    else                 { S.itQ = 1; showStage('stage-it'); updateItUI(); }
+    return;
   }
+  // Not authenticated — show the disguised auth screen matching their door
+  showStage(S.door === 'ld' ? 'stage-auth-ld' : 'stage-auth-it');
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -959,6 +1310,7 @@ function updateItUI() {
   document.querySelectorAll('.it-q').forEach(el => el.classList.remove('active'));
   document.getElementById(`itq${q}`).classList.add('active');
   document.getElementById('itFormTitle').textContent = itTitles[q];
+  // Update step indicators
   for (let i=1; i<=8; i++) {
     const step = document.getElementById(`its${i}`);
     step.className = 'it-step';
@@ -998,17 +1350,9 @@ function itPrev() {
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   SUBMIT — sets door-aware copy,
-   then runs processing + API call
+   SUBMIT — PROCESSING → API
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 function submitProfile() {
-  // Inject door-aware copy — no Veros language shown yet
-  const copy = PROC_COPY[S.door];
-  document.getElementById('procLabel').textContent = copy.label;
-  copy.steps.forEach((txt, i) => {
-    document.getElementById(`pst${i + 1}`).textContent = txt;
-  });
-
   showStage('stage-processing');
   runProcessingAnimation();
   callVeros();
@@ -1020,10 +1364,7 @@ function runProcessingAnimation() {
   const dones  = [650,1050,1450,1850,2250,2650,3050];
   steps.forEach((id,i) => {
     setTimeout(() => document.getElementById(id).classList.add('active'), delays[i]);
-    setTimeout(() => {
-      document.getElementById(id).classList.remove('active');
-      document.getElementById(id).classList.add('done');
-    }, dones[i]);
+    setTimeout(() => { document.getElementById(id).classList.remove('active'); document.getElementById(id).classList.add('done'); }, dones[i]);
   });
 }
 
@@ -1081,7 +1422,9 @@ Analyze these answers carefully. Generate a JSON response ONLY — no preamble, 
     const text = data.content?.find(b => b.type === 'text')?.text || '';
     const clean = text.replace(/```json|```/g,'').trim();
     S.ibriData = JSON.parse(clean);
+    await saveToDatabase(S.ibriData);
   } catch(e) {
+    // Fallback profile if API fails
     S.ibriData = {
       ibri_score: 61,
       tier: 'Moderate',
@@ -1097,7 +1440,85 @@ Analyze these answers carefully. Generate a JSON response ONLY — no preamble, 
     };
   }
 
-  setTimeout(() => showStage('stage-reveal'), 3400);
+  // Wait for animation, then route based on session count
+  setTimeout(async () => {
+    if (S.user) {
+      const { data: sessions } = await db
+        .from('simulation_sessions')
+        .select('id')
+        .eq('user_id', S.user.id);
+      const count = sessions?.length || 0;
+      if (count <= 1) {
+        showStage('stage-reveal'); // first run — show the reveal
+      } else {
+        await loadDashboard();
+        showStage('stage-dashboard');
+      }
+    } else {
+      showStage('stage-reveal');
+    }
+  }, 3400);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PERSIST TO SUPABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+async function saveToDatabase(d) {
+  if (!S.user) return; // not authenticated — skip silently
+
+  // 1. Get next version number for this user
+  const { data: existing } = await db
+    .from('behavioral_profiles')
+    .select('version')
+    .eq('user_id', S.user.id)
+    .order('version', { ascending: false })
+    .limit(1);
+
+  const version = existing?.length ? existing[0].version + 1 : 1;
+
+  // 2. Insert behavioral profile
+  const { data: profile, error: profileErr } = await db
+    .from('behavioral_profiles')
+    .insert({
+      user_id:        S.user.id,
+      version:        version,
+      door:           S.door,
+      answers:        S.answers,
+      ibri_score:     d.ibri_score,
+      tier:           d.tier,
+      fv:             d.dimensions.fv,
+      sc:             d.dimensions.sc,
+      rr:             d.dimensions.rr,
+      ea:             d.dimensions.ea,
+      insight_fv:     d.insights.fv,
+      insight_sc:     d.insights.sc,
+      insight_rr:     d.insights.rr,
+      insight_ea:     d.insights.ea,
+      dominant_vector: d.dominant_vector,
+      signature_note: d.signature_note,
+    })
+    .select()
+    .single();
+
+  if (profileErr) { console.error('Profile save error:', profileErr); return; }
+
+  // 3. Insert simulation session (links to profile)
+  const { error: sessionErr } = await db
+    .from('simulation_sessions')
+    .insert({
+      user_id:      S.user.id,
+      profile_id:   profile.id,
+      door:         S.door,
+      ibri_score:   d.ibri_score,
+      tier:         d.tier,
+      fv:           d.dimensions.fv,
+      sc:           d.dimensions.sc,
+      rr:           d.dimensions.rr,
+      ea:           d.dimensions.ea,
+      full_response: d,
+    });
+
+  if (sessionErr) { console.error('Session save error:', sessionErr); }
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1107,14 +1528,17 @@ function showProfile() {
   const d = S.ibriData;
   if (!d) { showStage('stage-profile'); return; }
 
+  // Door context
   document.getElementById('profileDoorCtx').textContent = S.door === 'ld' ? 'Entry via L&D door · Learning Path Personalization' : 'Entry via IT door · Access Profile Completion';
   document.getElementById('profileTimestamp').textContent = new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'});
 
+  // IBRI score
   document.getElementById('ibriNum').textContent = d.ibri_score;
   const tier = document.getElementById('ibriTier');
   tier.textContent = d.tier;
   tier.className = 'ibri-score-tier ' + d.tier.toLowerCase();
 
+  // Dimension bars
   const dims = [
     { key:'fv', label:'Fatigue Vulnerability',  level: d.dimensions.fv >= 65 ? 'high' : d.dimensions.fv >= 40 ? 'elevated' : 'stable' },
     { key:'sc', label:'Social Compliance',       level: d.dimensions.sc >= 65 ? 'high' : d.dimensions.sc >= 40 ? 'elevated' : 'stable' },
@@ -1136,6 +1560,7 @@ function showProfile() {
     document.querySelectorAll('.ibri-dim-fill').forEach(b => b.style.width = b.dataset.w);
   }, 300);
 
+  // Insights
   const insightDefs = [
     { key:'fv', cls:'fv', label:'Fatigue Vulnerability' },
     { key:'sc', cls:'sc', label:'Social Compliance' },
@@ -1177,6 +1602,123 @@ function showProfile() {
 
   showStage('stage-profile');
 }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   DASHBOARD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+async function loadDashboard() {
+  if (!S.user) return;
+
+  document.getElementById('dashUserEmail').textContent = S.user.email;
+
+  const { data: sessions } = await db
+    .from('simulation_sessions')
+    .select('*')
+    .eq('user_id', S.user.id)
+    .order('completed_at', { ascending: false });
+
+  if (!sessions?.length) return;
+
+  const latest = sessions[0];
+  const tierClass = latest.tier.toLowerCase();
+
+  document.getElementById('dashScoreNum').textContent = latest.ibri_score;
+  document.getElementById('dashTier').textContent = latest.tier;
+  document.getElementById('dashTier').className = `dash-score-tier ${tierClass}`;
+  document.getElementById('dashCircle').className = `dash-score-circle ${tierClass}`;
+
+  const { data: profile } = await db
+    .from('behavioral_profiles')
+    .select('signature_note')
+    .eq('user_id', S.user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (profile) document.getElementById('dashSig').textContent = profile.signature_note || '—';
+
+  const dims = [
+    { key: 'FV', label: 'Fatigue Vulnerability', val: latest.fv },
+    { key: 'SC', label: 'Social Compliance',      val: latest.sc },
+    { key: 'RR', label: 'Risk Rationalization',   val: latest.rr },
+    { key: 'EA', label: 'Exposure Awareness',     val: latest.ea },
+  ];
+  document.getElementById('dashDims').innerHTML = dims.map(d => `
+    <div class="dash-dim">
+      <div class="dash-dim-head">
+        <span class="dash-dim-key">${d.key}</span>
+        <span class="dash-dim-val">${d.val}</span>
+      </div>
+      <div class="dash-dim-bar"><div class="dash-dim-fill" style="width:${d.val}%"></div></div>
+    </div>
+  `).join('');
+
+  const doorLabel = { ld: 'L&D', it: 'IT' };
+  document.getElementById('dashHistoryRows').innerHTML = sessions.map(s => {
+    const tc = s.tier.toLowerCase();
+    const date = new Date(s.completed_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    return `
+      <div class="dash-history-row">
+        <span class="dash-h-date">${date}</span>
+        <span class="dash-h-door">${doorLabel[s.door] || s.door}</span>
+        <span class="dash-h-score">${s.ibri_score} / 100</span>
+        <span class="dash-h-tier ${tc}">${s.tier}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function runNewAssessment() {
+  S.answers = {}; S.door = null; S.ibriData = null;
+  showStage('stage-door');
+}
 </script>
+<!-- ══════════════════════════════════
+     STAGE DASHBOARD
+══════════════════════════════════ -->
+<div class="stage" id="stage-dashboard">
+  <div class="dash-topbar">
+    <div class="dash-topbar-left">
+      <div class="vmark"></div>
+      <span class="dash-topbar-title">Veros</span>
+      <div class="dash-topbar-sep"></div>
+      <span class="dash-topbar-user" id="dashUserEmail"></span>
+    </div>
+    <button class="dash-run-btn" onclick="runNewAssessment()">Run New Assessment →</button>
+  </div>
+  <div class="dash-body">
+
+    <!-- Latest score hero -->
+    <div class="dash-section-label" style="margin-bottom:1rem;">Current Profile</div>
+    <div class="dash-hero" id="dashHero">
+      <div class="dash-score-circle" id="dashCircle">
+        <span class="dash-score-num" id="dashScoreNum">—</span>
+        <span class="dash-score-denom">/ 100</span>
+        <span class="dash-score-tier" id="dashTier">—</span>
+      </div>
+      <div class="dash-hero-right">
+        <div class="dash-hero-label">Behavioral Signature</div>
+        <div class="dash-hero-sig" id="dashSig">—</div>
+        <div class="dash-dims" id="dashDims"></div>
+      </div>
+    </div>
+
+    <!-- Session history -->
+    <div class="dash-section-label" style="margin-top:2rem;margin-bottom:1rem;">Assessment History</div>
+    <div class="dash-history">
+      <div class="dash-history-row dash-history-header">
+        <span class="dash-h-label">Date</span>
+        <span class="dash-h-label">Door</span>
+        <span class="dash-h-label">Score</span>
+        <span class="dash-h-label">Risk Tier</span>
+      </div>
+      <div id="dashHistoryRows">
+        <div class="dash-empty">Loading history...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 </body>
 </html>
